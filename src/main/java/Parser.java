@@ -46,15 +46,37 @@ public class Parser {
     }
 
     private void parse(String message) {
-        if (message.contains(",")) {
+        if (message.contains(",") || message.contains("for")) {
             this.command = RequestHandler.Command.ADD;
 
-            String[] tokens = message.trim().split(",");
+            if (message.contains(",")) {
+                String[] tokens = message.trim().split(",");
 
-            if (tokens.length > 1) {
-                this.taskName = tokens[0].trim();
-                String time = tokens[1].trim();
-                this.numHours = Integer.parseInt(time.substring(0, time.indexOf("hour")).trim());
+                if (tokens.length > 1) {
+                    this.taskName = tokens[0].trim();
+                    String time = tokens[1].trim();
+                    this.numHours = Integer.parseInt(time.substring(0, time.indexOf("hour")).trim());
+                }
+            } else {
+                String[] tokens = message.trim().split("for");
+
+                if (tokens.length == 2) {
+                    this.taskName = tokens[0].trim();
+                    String time = tokens[1].trim();
+                    this.numHours = Integer.parseInt(time.substring(0, time.indexOf("hour")).trim());
+                } else if (tokens.length > 2) {
+                    this.taskName = "";
+
+                    for (int i = 0; i < tokens.length - 1; i++) {
+                        this.taskName += tokens[i] + "for";
+                    }
+
+                    this.taskName = this.taskName.substring(0, this.taskName.length() - 3);
+
+                    String time = tokens[tokens.length - 1].trim();
+                    this.numHours = Integer.parseInt(time.substring(0, time.indexOf("hour")).trim());
+                }
+
             }
 
         } else if (message.matches(".*need.*[0-9].*hours.*sleep.*")) { // how many number of hours

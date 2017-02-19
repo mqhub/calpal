@@ -261,7 +261,7 @@ public class RequestHandler {
 
         currTime = Math.max(currTime, 0);
         sleepTime = Math.min(sleepTime, 2400);
-        int totalHours = (sleepTime - currTime) / 100;
+        int totalHours = ((sleepTime - currTime) / 100) + 1;
 
         int hour = currTime;
         int numFreeHours = 0;
@@ -311,6 +311,8 @@ public class RequestHandler {
                 numFreeHours++;
             }
         }
+
+        LOGGER.debug("Day is {} h long, {} h free.", totalHours, numFreeHours);
 
         double productivity = (((double) totalHours - numFreeHours) / totalHours) * 100;
 
