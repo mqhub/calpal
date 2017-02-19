@@ -74,7 +74,6 @@ public class RequestHandler {
                 }
                 return sendMessage;
             case UNKNOWN:
-                executePost();
             default:
                 sendMessage.setText("Sorry, I didn't understand that... \uD83D\uDE28");
                 return sendMessage;
@@ -520,45 +519,51 @@ public class RequestHandler {
     private String collectRecommendations(int startDay, int endDay, List<Task> calendar) {
         StringBuilder builder = new StringBuilder();
 
-        JSONArray json = new JSONArray(executePost());
-        List<JSONObject> rel = new ArrayList<>();
+        try {
+            JSONArray json = new JSONArray(slurpFile("nyu.txt"));
+            List<JSONObject> rel = new ArrayList<>();
 
-        for (Object obj : json) {
-            JSONObject jsonObj = (JSONObject) obj;
-            if (!jsonObj.getString("date").startsWith("February 19")) {
-                break;
+            for (Object obj : json) {
+                JSONObject jsonObj = (JSONObject) obj;
+                if (!jsonObj.getString("date").startsWith("February 19")) {
+                    break;
+                }
+
+                rel.add(jsonObj);
             }
 
-            rel.add(jsonObj);
-        }
+            int ptr = startDay;
+            int eventPtr = 0;
 
-        int ptr = startDay;
-        int eventPtr = 0;
+            while (ptr < endDay) {
+                if (eventPtr < calendar.size() && ptr < calendar.get(eventPtr).getStartTime()) {
+                    // Free time before next event
 
-        while (ptr < endDay) {
-            if (eventPtr < calendar.size() && ptr < calendar.get(eventPtr).getStartTime()) {
-                // Free time before next event
+                    builder.append(getEventsBetweenRange(ptr, calendar.get(eventPtr).getStartTime(), rel));
 
-                builder.append(getEventsBetweenRange(ptr, calendar.get(eventPtr).getStartTime(), rel));
+                    ptr = calendar.get(eventPtr).getEndTime();
+                    eventPtr++;
 
-                ptr = calendar.get(eventPtr).getEndTime();
-                eventPtr++;
+                } else if (eventPtr >= calendar.size()) {
+                    // Time between last event and sleep time
 
-            } else if (eventPtr >= calendar.size()) {
-                // Time between last event and sleep time
+                    builder.append(getEventsBetweenRange(ptr, endDay, rel));
 
-                builder.append(getEventsBetweenRange(ptr, endDay, rel));
+                    ptr = endDay;
+                } else {
+                    // Go to the next event
 
-                ptr = endDay;
-            } else {
-                // Go to the next event
+                    ptr = calendar.get(eventPtr).getEndTime();
+                    eventPtr++;
+                }
 
-                ptr = calendar.get(eventPtr).getEndTime();
-                eventPtr++;
             }
-
+            return builder.toString();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
         }
-        return builder.toString();
+
+        return "";
     }
 
     private String getEventsBetweenRange(int start, int end, List<JSONObject> arr) {
@@ -881,6 +886,18 @@ public class RequestHandler {
         return input;
     }
 
+    private String slurpFile(String filename) throws IOException {
+        File file = new File(filename);
+
+        if (!file.exists()) {
+            return "";
+        }
+
+        BufferedReader reader = new BufferedReader(new FileReader(filename));
+
+        return reader.readLine();
+    }
+
     private void writeToFile(String filename, List<String> content) throws IOException {
         File file = new File(filename);
 
@@ -897,50 +914,6 @@ public class RequestHandler {
 
         writer.flush();
         writer.close();
-    }
-
-    public String executePost() {
-        String url = "http://events.nyu.edu/live/json/events/category/Free/";
-
-        // Create an instance of HttpClient.
-        HttpClient client = new HttpClient();
-
-        // Create a method instance.
-        GetMethod method = new GetMethod(url);
-
-        // Provide custom retry handler is necessary
-        method.getParams().setParameter(HttpMethodParams.RETRY_HANDLER,
-                new DefaultHttpMethodRetryHandler(3, false));
-
-        try {
-            // Execute the method.
-            int statusCode = client.executeMethod(method);
-
-            if (statusCode != HttpStatus.SC_OK) {
-                System.err.println("Method failed: " + method.getStatusLine());
-            }
-
-            // Read the response body.
-            byte[] responseBody = method.getResponseBody();
-
-            // Deal with the response.
-            // Use caution: ensure correct character encoding and is not binary data
-            System.out.println(new String(responseBody));
-
-            return new String(responseBody);
-
-        } catch (HttpException e) {
-            System.err.println("Fatal protocol violation: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        } catch (IOException e) {
-            System.err.println("Fatal transport error: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        } finally {
-            // Release the connection.
-            method.releaseConnection();
-        }
     }
 
 
